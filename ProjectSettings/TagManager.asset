@@ -9,12 +9,12 @@ TagManager:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - CC
   - Water
   - UI
-  - Obs
-  - 
-  - 
+  - Obstacle
+  - Collectible
+  - Player
   - 
   - 
   - 

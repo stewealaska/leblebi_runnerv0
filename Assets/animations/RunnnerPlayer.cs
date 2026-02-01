@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Collections;
 
 [RequireComponent(typeof(CharacterController))]
 public class RunnerPlayer : MonoBehaviour
@@ -20,10 +21,18 @@ public class RunnerPlayer : MonoBehaviour
     [Header("Ground Check")]
     public LayerMask groundMask = ~0;
 
+    [Header("Invulnerability Visual (Blink)")]
+    [Tooltip("Yanýp sönme aralýðý (saniye). 0.08–0.15 iyi aralýk.")]
+    public float blinkInterval = 0.10f;
+
     private CharacterController cc;
 
     private int targetLane = 1;  // 0 = sol, 1 = orta, 2 = sað
     private float verticalVelocity;
+
+    // Blink internals
+    private Renderer[] cachedRenderers;
+    private Coroutine blinkRoutine;
 
     void Awake()
     {
@@ -34,6 +43,8 @@ public class RunnerPlayer : MonoBehaviour
 
         if (animator != null)
             animator.applyRootMotion = false;
+
+        cachedRenderers = GetComponentsInChildren<Renderer>(true);
     }
 
     void Start()
@@ -43,6 +54,9 @@ public class RunnerPlayer : MonoBehaviour
 
         if (animator != null)
             animator.SetBool("isJumping", false);
+
+        // Güvenlik: sahne baþýnda görünür olsun
+        SetRenderersVisible(true);
     }
 
     void Update()
@@ -91,7 +105,6 @@ public class RunnerPlayer : MonoBehaviour
         float speed = (GameManager.Instance != null) ? GameManager.Instance.CurrentSpeed : forwardSpeed;
         float zMove = speed * Time.deltaTime;
 
-
         // === FINAL MOVE ===
         Vector3 motion = new Vector3(xMove, verticalVelocity * Time.deltaTime, zMove);
         cc.Move(motion);
@@ -123,5 +136,71 @@ public class RunnerPlayer : MonoBehaviour
         float radius = cc.radius * 0.9f;
         float distance = cc.bounds.extents.y + 0.2f;
         Gizmos.DrawWireSphere(origin + Vector3.down * distance, radius);
+    }
+
+    // ===== TAKILMA ÇÖZÜM ARAÇLARI =====
+
+    public void SetCollisionEnabled(bool enabled)
+    {
+        if (cc == null) cc = GetComponent<CharacterController>();
+        cc.detectCollisions = enabled;
+    }
+
+    public void NudgeForward(float forward = 2.0f, float up = 0.2f)
+    {
+        if (cc == null) cc = GetComponent<CharacterController>();
+        cc.Move(new Vector3(0f, up, forward));
+    }
+
+    // ===== BLINK (INVULNERABILITY VISUAL) =====
+
+    public void StartInvulnerabilityBlink(float duration)
+    {
+        if (blinkRoutine != null)
+            StopCoroutine(blinkRoutine);
+
+        blinkRoutine = StartCoroutine(BlinkCoroutine(duration));
+    }
+
+    public void StopInvulnerabilityBlink()
+    {
+        if (blinkRoutine != null)
+        {
+            StopCoroutine(blinkRoutine);
+            blinkRoutine = null;
+        }
+
+        // Bitince kesin görünür býrak
+        SetRenderersVisible(true);
+    }
+
+    private IEnumerator BlinkCoroutine(float duration)
+    {
+        float end = Time.time + duration;
+        bool visible = true;
+
+        // Süre boyunca toggle
+        while (Time.time < end)
+        {
+            visible = !visible;
+            SetRenderersVisible(visible);
+            yield return new WaitForSeconds(blinkInterval);
+        }
+
+        // Final: görünür
+        SetRenderersVisible(true);
+        blinkRoutine = null;
+    }
+
+    private void SetRenderersVisible(bool visible)
+    {
+        if (cachedRenderers == null || cachedRenderers.Length == 0)
+            cachedRenderers = GetComponentsInChildren<Renderer>(true);
+
+        for (int i = 0; i < cachedRenderers.Length; i++)
+        {
+            if (cachedRenderers[i] != null)
+                cachedRenderers[i].enabled = visible;
+        }
     }
 }
