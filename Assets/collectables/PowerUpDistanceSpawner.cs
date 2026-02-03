@@ -39,9 +39,20 @@ public class PowerUpDistanceSpawner : MonoBehaviour
     [Tooltip("Her heart denemesinde çýkma olasýlýðý.")]
     [Range(0f, 1f)] public float heartChance = 0.05f;
 
+    // ===== SHIELD =====
+    [Header("Shield")]
+    public GameObject shieldPrefab;
+
+    [Tooltip("Shield spawn denemesi aralýðý (metre).")]
+    public Vector2 shieldSpacingRange = new Vector2(140f, 240f);
+
+    [Tooltip("Her shield denemesinde çýkma olasýlýðý.")]
+    [Range(0f, 1f)] public float shieldChance = 0.04f;
+
     // Internal spawn trackers
     private float nextMagnetZ;
     private float nextHeartZ;
+    private float nextShieldZ;
 
     private static readonly Collider[] hits = new Collider[16];
 
@@ -55,8 +66,10 @@ public class PowerUpDistanceSpawner : MonoBehaviour
 
         if (player != null)
         {
-            nextMagnetZ = player.position.z + startAhead;
-            nextHeartZ = player.position.z + startAhead;
+            float startZ = player.position.z + startAhead;
+            nextMagnetZ = startZ;
+            nextHeartZ = startZ;
+            nextShieldZ = startZ;
         }
     }
 
@@ -66,7 +79,6 @@ public class PowerUpDistanceSpawner : MonoBehaviour
 
         float targetZ = player.position.z + keepAhead;
 
-        // --- Magnet spawn loop ---
         if (magnetPrefab != null)
         {
             while (nextMagnetZ < targetZ)
@@ -76,7 +88,6 @@ public class PowerUpDistanceSpawner : MonoBehaviour
             }
         }
 
-        // --- Heart spawn loop ---
         if (heartPrefab != null)
         {
             while (nextHeartZ < targetZ)
@@ -85,22 +96,27 @@ public class PowerUpDistanceSpawner : MonoBehaviour
                 nextHeartZ += Random.Range(heartSpacingRange.x, heartSpacingRange.y);
             }
         }
+
+        if (shieldPrefab != null)
+        {
+            while (nextShieldZ < targetZ)
+            {
+                TrySpawn(shieldPrefab, shieldChance, nextShieldZ);
+                nextShieldZ += Random.Range(shieldSpacingRange.x, shieldSpacingRange.y);
+            }
+        }
     }
 
     private void TrySpawn(GameObject prefab, float chance, float zPos)
     {
         if (prefab == null) return;
-
-        // Olasýlýk kontrolü
         if (Random.value > chance) return;
 
-        // Lane seç (0 sol, 1 orta, 2 sað)
         int lane = Random.Range(0, 3);
         float x = (lane - 1) * laneDistance;
 
         Vector3 pos = new Vector3(x, spawnY, zPos);
 
-        // Engel çakýþmasý varsa koyma
         if (IsBlocked(pos)) return;
 
         Instantiate(prefab, pos, Quaternion.identity);

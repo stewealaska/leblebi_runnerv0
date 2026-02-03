@@ -1,21 +1,24 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
+using System.Collections;
 
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
     public static bool Restarted = false;
+    public bool IsShieldActive
+    {
+        get { return shieldActive; }
+    }
+
 
     [Header("UI")]
     public TMP_Text scoreText;
     public TMP_Text multiplierText;
-
-    [Tooltip("Can göstergesi (örn: 3/5). Boþ kalabilir.")]
     public TMP_Text livesText;
-
-    [Tooltip("Magnet kalan süre (örn: 2.7s). Boþ kalabilir.")]
     public TMP_Text magnetTimerText;
+    public TMP_Text shieldTimerText;
 
     public GameObject startPanel;
     public GameObject gameOverPanel;
@@ -30,14 +33,18 @@ public class GameManager : MonoBehaviour
     public int startLives = 3;
     public int maxLives = 5;
 
-    [Tooltip("Engelle temas ettiðinde ayný anda art arda can gitmesin diye koruma süresi.")]
+    [Tooltip("Engelle temas ettiÄŸinde aynÄ± anda art arda can gitmesin diye koruma sÃ¼resi.")]
     public float damageCooldown = 0.8f;
 
     [Header("Hit Invulnerability")]
     public float invulnDuration = 1.2f;
-
-    [Tooltip("Çarpýnca hýzdan düþülsün mü? (m/s gibi düþün)")]
     public float hitSpeedPenalty = 4f;
+
+    [Header("Shield")]
+    public float shieldCollisionOffTime = 0.25f;
+
+    [Tooltip("Shield engel Ã§arpÄ±ÅŸmasÄ±nÄ± yedikten sonra aynÄ± frame'de ikinci hit gelmesini Ã¶nlemek iÃ§in kÄ±sa koruma.")]
+    public float shieldConsumeInvuln = 0.45f;
 
     public bool GameStarted { get; private set; } = false;
     public float CurrentSpeed { get; private set; }
@@ -53,6 +60,10 @@ public class GameManager : MonoBehaviour
     private int playerLayer = -1;
     private int obstacleLayer = -1;
 
+    // Shield state
+    private bool shieldActive = false;
+    private float shieldEndTime = 0f;
+
     private void Awake()
     {
         Instance = this;
@@ -60,13 +71,16 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        // --- HARD RESET (Restart sonrasý bozulmayý engeller) ---
+        // --- HARD RESET ---
         score = 0;
         isGameOver = false;
 
         invulnerable = false;
         invulnEndTime = 0f;
         nextDamageTime = 0f;
+
+        shieldActive = false;
+        shieldEndTime = 0f;
 
         playerLayer = LayerMask.NameToLayer("Player");
         obstacleLayer = LayerMask.NameToLayer("Obstacle");
@@ -78,7 +92,7 @@ public class GameManager : MonoBehaviour
         if (rp != null)
         {
             rp.SetCollisionEnabled(true);
-            rp.StopInvulnerabilityBlink(); // restart sonrasý görünür kalsýn
+            rp.StopInvulnerabilityBlink();
         }
 
         Lives = Mathf.Clamp(startLives, 0, maxLives);
@@ -86,6 +100,7 @@ public class GameManager : MonoBehaviour
 
         UpdateUI();
         SetMagnetTimer(0f);
+        SetShieldTimer(0f);
 
         if (Restarted)
         {
@@ -126,7 +141,22 @@ public class GameManager : MonoBehaviour
         UpdateSpeedAndMultiplier();
         UpdateMultiplierUI();
 
-        // i-frame bittiðinde çarpýþmalarý geri aç + blink kapat
+        // Shield timer UI
+        if (shieldActive)
+        {
+            float remaining = shieldEndTime - Time.time;
+            if (remaining <= 0f)
+            {
+                shieldActive = false;
+                SetShieldTimer(0f);
+            }
+            else
+            {
+                SetShieldTimer(remaining);
+            }
+        }
+
+        // i-frame bittiÄŸinde Ã§arpÄ±ÅŸmalarÄ± geri aÃ§ + blink kapat
         if (invulnerable && Time.time >= invulnEndTime)
         {
             invulnerable = false;
@@ -189,7 +219,80 @@ public class GameManager : MonoBehaviour
         UpdateLivesUI();
     }
 
-    // Hasar uygulanýrsa true döner; i-frame vs yüzünden uygulanmazsa false.
+    // ===== SHIELD API =====
+    public void ActivateShield(float duration)
+    {
+        if (isGameOver) return;
+
+        shieldActive = true;
+        shieldEndTime = Time.time + duration;
+        SetShieldTimer(duration);
+    }
+
+    // ObstacleHitDetector buradan geÃ§ecek:
+    // Shield varsa: can gitmez, engel yok olur, shield biter, kÄ±sa koruma baÅŸlar.
+    public bool TryHandleObstacleHit(int damageAmount, GameObject obstacleRoot)
+    {
+        if (isGameOver) return false;
+        if (!GameStarted) return false;
+
+        // EÄŸer zaten i-frame iÃ§indeysek hiÃ§bir ÅŸey yapma
+        if (invulnerable) return false;
+
+        // Ã–nce shield kontrolÃ¼
+        if (shieldActive)
+        {
+            float remaining = shieldEndTime - Time.time;
+            if (remaining > 0f)
+            {
+                // Shield tÃ¼ket
+                shieldActive = false;
+                SetShieldTimer(0f);
+
+                // Engeli yok et
+                if (obstacleRoot != null)
+                    Destroy(obstacleRoot);
+
+                // AynÄ± frame'de ikinci collider hit gelirse can gitmesin diye kÄ±sa invuln + cooldown
+                invulnerable = true;
+                invulnEndTime = Time.time + shieldConsumeInvuln;
+                nextDamageTime = Time.time + shieldConsumeInvuln;
+
+                // TakÄ±lma olmasÄ±n diye kÄ±sa sÃ¼re collision kapat + nudge
+                RunnerPlayer rp = FindFirstObjectByType<RunnerPlayer>();
+                if (rp != null)
+                {
+                    rp.SetCollisionEnabled(false);
+                    rp.NudgeForward(2.5f, 0.2f);
+                    rp.StartInvulnerabilityBlink(shieldConsumeInvuln);
+                    StartCoroutine(ReenableCollisionAfter(rp, shieldCollisionOffTime));
+                }
+
+                return true;
+            }
+
+            // SÃ¼re bitmiÅŸse kapat
+            shieldActive = false;
+            SetShieldTimer(0f);
+        }
+
+        // Shield yoksa normal hasar
+        bool tookDamage = TryTakeDamage(damageAmount);
+
+        // FIX: Hasar gerÃ§ekten iÅŸlendi ise engeli yok et
+        if (tookDamage && obstacleRoot != null)
+            Destroy(obstacleRoot);
+
+        return tookDamage;
+    }
+
+    private IEnumerator ReenableCollisionAfter(RunnerPlayer rp, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (rp != null) rp.SetCollisionEnabled(true);
+    }
+
+    // ===== DAMAGE =====
     public bool TryTakeDamage(int amount)
     {
         if (isGameOver) return false;
@@ -217,8 +320,6 @@ public class GameManager : MonoBehaviour
         {
             rp.SetCollisionEnabled(false);
             rp.NudgeForward(2.0f, 0.2f);
-
-            //  Blink baþlat
             rp.StartInvulnerabilityBlink(invulnDuration);
         }
 
@@ -239,8 +340,8 @@ public class GameManager : MonoBehaviour
             gameOverPanel.SetActive(true);
 
         SetMagnetTimer(0f);
+        SetShieldTimer(0f);
 
-        // Oyun bitince blink varsa kapatýp karakteri görünür býrak
         RunnerPlayer rp = FindFirstObjectByType<RunnerPlayer>();
         if (rp != null) rp.StopInvulnerabilityBlink();
     }
@@ -256,6 +357,7 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
+    // ===== TIMER UI =====
     public void SetMagnetTimer(float remaining)
     {
         if (magnetTimerText == null) return;
@@ -269,6 +371,20 @@ public class GameManager : MonoBehaviour
         magnetTimerText.text = remaining.ToString("0.0") + "s";
     }
 
+    public void SetShieldTimer(float remaining)
+    {
+        if (shieldTimerText == null) return;
+
+        if (remaining <= 0f)
+        {
+            shieldTimerText.text = "";
+            return;
+        }
+
+        shieldTimerText.text = remaining.ToString("0.0") + "s";
+    }
+
+    // ===== UI Helpers =====
     private void UpdateUI()
     {
         if (scoreText != null)

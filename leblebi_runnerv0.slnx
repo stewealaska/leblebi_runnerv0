@@ -1,6 +1,12 @@
 ﻿<Solution>
   <Project Path="Unity.Cinemachine.Editor.csproj" />
-  <Project Path="Unity.Cinemachine.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="Unity.Cinemachine.csproj" />
+  <Project Path="CFXRRuntime.csproj" />
+  <Project Path="CFXRDemo.csproj" />
+  <Project Path="CFXREditor.csproj" />
+  <Project Path="KinoBloom.Runtime.csproj" />
+  <Project Path="CFXR.WelcomeScreen.csproj" />
   <Project Path="URPWizard.csproj" />
+  <Project Path="ToonyColorsPro.Demo.Editor.csproj" />
 </Solution>

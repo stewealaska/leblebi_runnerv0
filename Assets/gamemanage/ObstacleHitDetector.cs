@@ -3,23 +3,11 @@ using UnityEngine;
 [RequireComponent(typeof(CharacterController))]
 public class ObstacleHitDetector : MonoBehaviour
 {
-    [Tooltip("normal.y bu deðerden büyükse 'üstten temas' sayýlýr (can gitmez).")]
     public float topHitThreshold = 0.5f;
-
-    [Tooltip("Engellerin tag'i. Ýstersen Obstacle yap.")]
     public string obstacleTag = "Obstacle";
-
-    [Tooltip("Çarpýnca kaç can gitsin?")]
     public int damage = 1;
 
-    [Header("Destroy On Damage")]
-    [Tooltip("Hasar verdiðin engeli yok etsin mi?")]
-    public bool destroyObstacleOnDamage = true;
-
-    [Tooltip("Engeli yok etme gecikmesi (anim/VFX için).")]
-    public float destroyDelay = 0f;
-
-    [Tooltip("True: collider'ýn ROOT objesini siler (genelde prefab komple gider). False: sadece collider objesini siler.")]
+    [Tooltip("Collider'ýn ROOT objesini yok eder (genelde tüm prefab).")]
     public bool destroyRootObject = true;
 
     private void OnControllerColliderHit(ControllerColliderHit hit)
@@ -31,14 +19,9 @@ public class ObstacleHitDetector : MonoBehaviour
 
         if (GameManager.Instance == null) return;
 
-        // Hasar gerçekten uygulandý mý?
-        bool applied = GameManager.Instance.TryTakeDamage(damage);
+        GameObject obstacleObj = destroyRootObject ? hit.collider.transform.root.gameObject : hit.collider.gameObject;
 
-        // Hasar uygulandýysa engeli kaldýr
-        if (applied && destroyObstacleOnDamage)
-        {
-            GameObject target = destroyRootObject ? hit.collider.transform.root.gameObject : hit.collider.gameObject;
-            Destroy(target, destroyDelay);
-        }
+        // Kalkan varsa can gitmez + engel yok olur
+        GameManager.Instance.TryHandleObstacleHit(damage, obstacleObj);
     }
 }

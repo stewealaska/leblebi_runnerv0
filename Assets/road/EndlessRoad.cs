@@ -11,6 +11,9 @@ public class EndlessRoad : MonoBehaviour
     public int tilesOnScreen = 8;
     public float tileLength = 75f;
 
+    [Header("Failsafe")]
+    public float recycleAheadDistance = 20f;
+
     private readonly Queue<GameObject> tiles = new Queue<GameObject>();
     private float nextSpawnZ = 0f;
 
@@ -25,39 +28,51 @@ public class EndlessRoad : MonoBehaviour
 
     private void Start()
     {
-        if (tilePrefab == null)
+        if (tilePrefab == null) return;
+
+        if (tiles.Count == 0)
         {
-            Debug.LogError("EndlessRoad: tilePrefab boþ!");
-            enabled = false;
-            return;
+            for (int i = 0; i < tilesOnScreen; i++)
+            {
+                GameObject t = Instantiate(tilePrefab, transform);
+                t.transform.localPosition = new Vector3(0f, 0f, nextSpawnZ);
+                t.transform.localRotation = Quaternion.identity;
+                tiles.Enqueue(t);
+                nextSpawnZ += tileLength;
+
+                RoadEndTrigger trig = t.GetComponentInChildren<RoadEndTrigger>(true);
+                if (trig != null) trig.ResetTrigger();
+            }
         }
-
-        // Baþtan temiz baþla
-        tiles.Clear();
-        nextSpawnZ = 0f;
-
-        for (int i = 0; i < tilesOnScreen; i++)
-            SpawnTile();
     }
 
-    private void SpawnTile()
+    private void Update()
     {
-        // Local eksende diziyoruz
-        Vector3 localPos = new Vector3(0f, 0f, nextSpawnZ);
+        if (player == null) return;
+        if (tiles.Count == 0) return;
 
-        GameObject t = Instantiate(tilePrefab, transform);
-        t.transform.localPosition = localPos;
-        t.transform.localRotation = Quaternion.identity;
+        float needZ = player.position.z + recycleAheadDistance;
 
-        tiles.Enqueue(t);
-        nextSpawnZ += tileLength;
+        while (nextSpawnZ < needZ + tileLength)
+        {
+            GameObject oldest = tiles.Dequeue();
+            if (oldest == null) break;
+
+            oldest.transform.localPosition = new Vector3(0f, 0f, nextSpawnZ);
+            oldest.transform.localRotation = Quaternion.identity;
+            nextSpawnZ += tileLength;
+
+            RoadEndTrigger trig = oldest.GetComponentInChildren<RoadEndTrigger>(true);
+            if (trig != null) trig.ResetTrigger();
+
+            tiles.Enqueue(oldest);
+        }
     }
 
     public void RecycleTile(GameObject tile)
     {
         if (tile == null) return;
 
-        // Local eksende arkaya taþý
         tile.transform.localPosition = new Vector3(0f, 0f, nextSpawnZ);
         tile.transform.localRotation = Quaternion.identity;
         nextSpawnZ += tileLength;
@@ -68,7 +83,7 @@ public class EndlessRoad : MonoBehaviour
             tiles.Enqueue(tile);
         }
 
-        var trig = tile.GetComponentInChildren<RoadEndTrigger>(true);
+        RoadEndTrigger trig = tile.GetComponentInChildren<RoadEndTrigger>(true);
         if (trig != null) trig.ResetTrigger();
     }
 }

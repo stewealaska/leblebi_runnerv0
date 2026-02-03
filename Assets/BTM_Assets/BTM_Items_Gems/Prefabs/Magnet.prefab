@@ -91,6 +91,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: e9f10851f5b79d94db00a34dbfa7afa9, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3683896455211479415}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: e9f10851f5b79d94db00a34dbfa7afa9, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2400454038496865688}
   m_SourcePrefab: {fileID: 100100000, guid: e9f10851f5b79d94db00a34dbfa7afa9, type: 3}
 --- !u!1 &8050537342152234946 stripped
 GameObject:
@@ -135,9 +138,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6fddcc8a1573e4d44bb8368c4756b91a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MagnetCollectible
-  duration: 8
+  duration: 10
   radius: 10
-  pullSpeed: 18
+  speed: 18
 --- !u!65 &-5892478869627582455
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -186,3 +189,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpinCoin
   rotateSpeed: 90
+--- !u!114 &2400454038496865688
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8050537342152234946}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 599f23abdb8f26f47aaa653834c51f54, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CollectiblePickupFX
+  vfxPrefab: {fileID: 0}
+  sfx: {fileID: 8300000, guid: 0c008ee3ee72a4362a35be25fa5de043, type: 3}
+  sfxVolume: 0.8
+  followPlayer: 1
+  followTargetOverride: {fileID: 0}
+  followLocalOffset: {x: 0, y: 0.3, z: 0.25}
+  followLocalEuler: {x: 0, y: 0, z: 0}

@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 474898097884043179}
   - component: {fileID: 5741710388306137858}
   - component: {fileID: 1205643131100125715}
+  - component: {fileID: 5387463135013763550}
   m_Layer: 7
   m_Name: SM_LootBox_01
   m_TagString: Untagged
@@ -127,7 +128,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5ce32d411ae74b1489f3a4eac3ae701f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoxCollectible
-  value: 1
+  scoreValue: 1
 --- !u!114 &5741710388306137858
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -155,3 +156,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DestroyBehindPlayer
   player: {fileID: 0}
   destroyBehindDistance: 5
+--- !u!114 &5387463135013763550
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5473813059742409218}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 599f23abdb8f26f47aaa653834c51f54, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CollectiblePickupFX
+  vfxPrefab: {fileID: 5112403345868107899, guid: 6f34ef0d986e9db4199cf75805f79753, type: 3}
+  sfx: {fileID: 8300000, guid: 881e3f52c86c94f26a60718d35627cd8, type: 3}
+  sfxVolume: 0.8
+  followPlayer: 1
+  followTargetOverride: {fileID: 0}
+  followLocalOffset: {x: 0, y: 0.3, z: 0.25}
+  followLocalEuler: {x: 0, y: 0, z: 0}

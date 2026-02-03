@@ -2,15 +2,20 @@ using UnityEngine;
 
 public class HeartCollectible : MonoBehaviour
 {
-    [Tooltip("Kaç can eklesin? Genelde 1.")]
-    public int healAmount = 1;
+    public int lifeAmount = 1;
 
-    private void OnTriggerEnter(Collider other)
+    public void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("Player")) return;
 
-        GameManager.Instance?.AddLife(healAmount);
+        if (GameManager.Instance != null)
+            GameManager.Instance.AddLife(lifeAmount);
 
-        Destroy(gameObject);
+        CollectiblePickupFX fx = GetComponent<CollectiblePickupFX>();
+        if (fx == null) fx = GetComponentInChildren<CollectiblePickupFX>(true);
+        if (fx == null) fx = GetComponentInParent<CollectiblePickupFX>();
+
+        if (fx != null) fx.PlayAndDestroy();
+        else Destroy(gameObject);
     }
 }
