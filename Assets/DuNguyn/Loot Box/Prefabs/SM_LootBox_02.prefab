@@ -128,7 +128,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5ce32d411ae74b1489f3a4eac3ae701f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoxCollectible
-  scoreValue: 1
+  scoreValue: 30
 --- !u!114 &5767962048240331326
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -168,7 +168,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 599f23abdb8f26f47aaa653834c51f54, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CollectiblePickupFX
-  vfxPrefab: {fileID: 5112403345868107899, guid: 6f34ef0d986e9db4199cf75805f79753, type: 3}
+  vfxPrefab: {fileID: 1141330259687333425, guid: 6718dc24203da53468af9ada8fef7d6d, type: 3}
   sfx: {fileID: 8300000, guid: 881e3f52c86c94f26a60718d35627cd8, type: 3}
   sfxVolume: 0.8
   followPlayer: 1

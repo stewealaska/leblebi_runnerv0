@@ -82,7 +82,7 @@ Material:
     - _Opacity_Global: 1
     - _Opacity_On_Centre: 0
     - _Opacity_On_Side: 1
-    - _Power: 4
+    - _Power: 0.07
     - _QueueControl: 0
     - _QueueOffset: 0
     - _Speed: 1
@@ -103,7 +103,7 @@ Material:
     - _Emission_Color: {r: 0, g: 0, b: 0, a: 0}
     - _Offset: {r: 0, g: 0, b: 0, a: 0}
     - _Offset_Tex_2: {r: 1, g: 1, b: 0, a: 0}
-    - _Texture_1_Color: {r: 0, g: 1, b: 1, a: 1}
+    - _Texture_1_Color: {r: 0, g: 1.6195393, b: 2, a: 1}
     - _Texture_2D_Color: {r: 0, g: 11.984314, b: 8.282353, a: 0}
     - _Texture_2_Color: {r: 0, g: 0.47056308, b: 11.984314, a: 0}
     - _Tile_X_Y: {r: 15.14, g: 33.7, b: 0, a: 0}

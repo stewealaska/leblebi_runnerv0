@@ -5,6 +5,12 @@ public class BoxCollectible : MonoBehaviour
     public int scoreValue = 1;
     public bool IsCollected { get; private set; }
 
+    public void Collect()
+    {
+        // Catcher uyumu: worldPos olmadan toplama
+        CollectAt(transform.position);
+    }
+
     public void CollectAt(Vector3 worldPos)
     {
         if (IsCollected) return;
@@ -16,7 +22,6 @@ public class BoxCollectible : MonoBehaviour
         CollectiblePickupFX fx = GetComponent<CollectiblePickupFX>();
         if (fx != null)
         {
-            // worldPos sadece SFX için de kullanýlýyor, VFX artýk player'ý takip edecek
             fx.PlayAtAndDestroy(worldPos);
         }
         else
@@ -28,8 +33,6 @@ public class BoxCollectible : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("Player")) return;
-
-        // Kutunun kendi pozisyonu (temiz)
         CollectAt(transform.position);
     }
 }

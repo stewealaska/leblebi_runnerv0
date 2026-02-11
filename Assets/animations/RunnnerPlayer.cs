@@ -10,8 +10,8 @@ public class RunnerPlayer : MonoBehaviour
 
     [Header("Movement")]
     public float forwardSpeed = 8f;
-    public float laneDistance = 2.5f;
-    public float laneChangeSpeed = 12f;
+    public float laneDistance = 2f;
+    public float laneChangeSpeed = 16f;
 
     [Header("Jump & Gravity")]
     public float jumpHeight = 1.4f;
@@ -25,6 +25,16 @@ public class RunnerPlayer : MonoBehaviour
     [Tooltip("Yanýp sönme aralýðý (saniye). 0.08–0.15 iyi aralýk.")]
     public float blinkInterval = 0.10f;
 
+    [Header("Swipe Settings")]
+    [Tooltip("Swipe algýlama eþiði (piksel). 60–120 arasý iyi.")]
+    public float swipeThresholdPixels = 90f;
+
+    [Tooltip("Çapraz swipe yanlýþ algýlanmasýn diye eksen baskýnlýk oraný. 1.2 iyi.")]
+    public float dominantAxisRatio = 1.2f;
+
+    [Tooltip("Editörde mouse ile swipe testini aç/kapat.")]
+    public bool enableMouseSwipeInEditor = true;
+
     private CharacterController cc;
 
     private int targetLane = 1;  // 0 = sol, 1 = orta, 2 = sað
@@ -33,6 +43,11 @@ public class RunnerPlayer : MonoBehaviour
     // Blink internals
     private Renderer[] cachedRenderers;
     private Coroutine blinkRoutine;
+
+    // Swipe internals
+    private Vector2 swipeStartPos;
+    private bool swipeTracking;
+    private bool swipeConsumed; // Bu dokunuþta swipe tetiklendi mi?
 
     void Awake()
     {
@@ -55,25 +70,23 @@ public class RunnerPlayer : MonoBehaviour
         if (animator != null)
             animator.SetBool("isJumping", false);
 
-        // Güvenlik: sahne baþýnda görünür olsun
         SetRenderersVisible(true);
     }
 
     void Update()
     {
-        // Oyun baþlamadýysa karakter hiçbir þey yapmasýn
         if (GameManager.Instance != null && !GameManager.Instance.GameStarted)
             return;
 
-        // === INPUT ===
         bool leftPressed = Keyboard.current != null && Keyboard.current.aKey.wasPressedThisFrame;
         bool rightPressed = Keyboard.current != null && Keyboard.current.dKey.wasPressedThisFrame;
         bool jumpPressed = Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame;
 
+        HandleSwipeInput(ref leftPressed, ref rightPressed, ref jumpPressed);
+
         if (leftPressed) targetLane = Mathf.Max(0, targetLane - 1);
         if (rightPressed) targetLane = Mathf.Min(2, targetLane + 1);
 
-        // === GROUND CHECK ===
         bool grounded = IsGroundedReliable();
 
         if (grounded && verticalVelocity < 0f)
@@ -84,7 +97,6 @@ public class RunnerPlayer : MonoBehaviour
                 animator.SetBool("isJumping", false);
         }
 
-        // === JUMP ===
         if (grounded && jumpPressed)
         {
             verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
@@ -93,21 +105,108 @@ public class RunnerPlayer : MonoBehaviour
                 animator.SetBool("isJumping", true);
         }
 
-        // === GRAVITY ===
         verticalVelocity += gravity * Time.deltaTime;
 
-        // === LANE MOVEMENT ===
         float targetX = (targetLane - 1) * laneDistance;
         float newX = Mathf.Lerp(transform.position.x, targetX, laneChangeSpeed * Time.deltaTime);
         float xMove = newX - transform.position.x;
 
-        // === FORWARD ===
         float speed = (GameManager.Instance != null) ? GameManager.Instance.CurrentSpeed : forwardSpeed;
         float zMove = speed * Time.deltaTime;
 
-        // === FINAL MOVE ===
         Vector3 motion = new Vector3(xMove, verticalVelocity * Time.deltaTime, zMove);
         cc.Move(motion);
+    }
+
+    private void HandleSwipeInput(ref bool leftPressed, ref bool rightPressed, ref bool jumpPressed)
+    {
+        // 1) Mobil touch varsa: Moved sýrasýnda anýnda tetikle
+        if (Input.touchCount > 0)
+        {
+            UnityEngine.Touch t = Input.GetTouch(0);
+
+            if (t.phase == UnityEngine.TouchPhase.Began)
+            {
+                swipeTracking = true;
+                swipeConsumed = false;
+                swipeStartPos = t.position;
+            }
+
+            if (swipeTracking && !swipeConsumed &&
+                (t.phase == UnityEngine.TouchPhase.Moved || t.phase == UnityEngine.TouchPhase.Stationary))
+            {
+                Vector2 currentPos = t.position;
+                if (TryConsumeSwipe(swipeStartPos, currentPos, ref leftPressed, ref rightPressed, ref jumpPressed))
+                {
+                    swipeConsumed = true;
+                    swipeTracking = false;
+                }
+            }
+
+            // Güvenlik: eðer Moved sýrasýnda tetiklenmediyse, Ended'da da dene
+            if (swipeTracking && !swipeConsumed &&
+                (t.phase == UnityEngine.TouchPhase.Ended || t.phase == UnityEngine.TouchPhase.Canceled))
+            {
+                Vector2 endPos = t.position;
+                TryConsumeSwipe(swipeStartPos, endPos, ref leftPressed, ref rightPressed, ref jumpPressed);
+
+                swipeTracking = false;
+                swipeConsumed = false;
+            }
+
+            if (t.phase == UnityEngine.TouchPhase.Ended || t.phase == UnityEngine.TouchPhase.Canceled)
+            {
+                swipeTracking = false;
+                swipeConsumed = false;
+            }
+
+            return;
+        }
+
+        // 2) Touch yoksa: Editor/PC mouse swipe (býrakýnca deðerlendir)
+        if (!enableMouseSwipeInEditor) return;
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            swipeTracking = true;
+            swipeConsumed = false;
+            swipeStartPos = (Vector2)Input.mousePosition;
+        }
+
+        if (swipeTracking && Input.GetMouseButtonUp(0))
+        {
+            Vector2 endPos = (Vector2)Input.mousePosition;
+            TryConsumeSwipe(swipeStartPos, endPos, ref leftPressed, ref rightPressed, ref jumpPressed);
+
+            swipeTracking = false;
+            swipeConsumed = false;
+        }
+    }
+
+    private bool TryConsumeSwipe(Vector2 start, Vector2 end, ref bool leftPressed, ref bool rightPressed, ref bool jumpPressed)
+    {
+        Vector2 delta = end - start;
+
+        if (delta.magnitude < swipeThresholdPixels)
+            return false;
+
+        float absX = Mathf.Abs(delta.x);
+        float absY = Mathf.Abs(delta.y);
+
+        if (absX > absY * dominantAxisRatio)
+        {
+            if (delta.x > 0f) rightPressed = true;
+            else leftPressed = true;
+            return true;
+        }
+
+        if (absY > absX * dominantAxisRatio)
+        {
+            if (delta.y > 0f) jumpPressed = true;
+            return true;
+        }
+
+        return false;
     }
 
     private bool IsGroundedReliable()
@@ -138,8 +237,6 @@ public class RunnerPlayer : MonoBehaviour
         Gizmos.DrawWireSphere(origin + Vector3.down * distance, radius);
     }
 
-    // ===== TAKILMA ÇÖZÜM ARAÇLARI =====
-
     public void SetCollisionEnabled(bool enabled)
     {
         if (cc == null) cc = GetComponent<CharacterController>();
@@ -151,8 +248,6 @@ public class RunnerPlayer : MonoBehaviour
         if (cc == null) cc = GetComponent<CharacterController>();
         cc.Move(new Vector3(0f, up, forward));
     }
-
-    // ===== BLINK (INVULNERABILITY VISUAL) =====
 
     public void StartInvulnerabilityBlink(float duration)
     {
@@ -170,7 +265,6 @@ public class RunnerPlayer : MonoBehaviour
             blinkRoutine = null;
         }
 
-        // Bitince kesin görünür býrak
         SetRenderersVisible(true);
     }
 
@@ -179,7 +273,6 @@ public class RunnerPlayer : MonoBehaviour
         float end = Time.time + duration;
         bool visible = true;
 
-        // Süre boyunca toggle
         while (Time.time < end)
         {
             visible = !visible;
@@ -187,7 +280,6 @@ public class RunnerPlayer : MonoBehaviour
             yield return new WaitForSeconds(blinkInterval);
         }
 
-        // Final: görünür
         SetRenderersVisible(true);
         blinkRoutine = null;
     }

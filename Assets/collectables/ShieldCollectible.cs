@@ -4,9 +4,12 @@ public class ShieldCollectible : MonoBehaviour
 {
     public float duration = 8f;
 
-    private void OnTriggerEnter(Collider other)
+    private bool collected = false;
+
+    public void Collect()
     {
-        if (!other.CompareTag("Player")) return;
+        if (collected) return;
+        collected = true;
 
         Debug.Log("SHIELD PICKED UP");
 
@@ -23,5 +26,11 @@ public class ShieldCollectible : MonoBehaviour
         CollectiblePickupFX fx = GetComponent<CollectiblePickupFX>();
         if (fx != null) fx.PlayAndDestroy();
         else Destroy(gameObject);
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (!other.CompareTag("Player")) return;
+        Collect();
     }
 }

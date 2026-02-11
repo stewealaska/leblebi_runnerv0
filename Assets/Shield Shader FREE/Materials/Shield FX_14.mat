@@ -21,8 +21,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Shield FX_14
-  m_Shader: {fileID: -6465566751694194690, guid: 7273ade5faebcb9448394e807492b217,
-    type: 3}
+  m_Shader: {fileID: -6465566751694194690, guid: 7273ade5faebcb9448394e807492b217, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -81,7 +80,7 @@ Material:
     - _Enable_Texture: 1
     - _Float: 0.509
     - _Opacity_Global: 1
-    - _Opacity_On_Centre: 0.02
+    - _Opacity_On_Centre: 0.083
     - _Opacity_On_Side: 1
     - _Power: 4
     - _QueueControl: 0
@@ -97,20 +96,21 @@ Material:
     m_Colors:
     - _Color: {r: 0, g: 0.46740404, b: 2.670157, a: 0}
     - _Color_1: {r: 2.811218, g: 0, b: 2.9960785, a: 0}
-    - _Color_A: {r: 0, g: 0.42322302, b: 2, a: 0}
+    - _Color_A: {r: 0, g: 1.9865763, b: 2.670157, a: 0}
     - _Color_B: {r: 2.2728195, g: 2.523612, b: 2.821064, a: 0}
     - _Distort_Tile_XY: {r: 20, g: 20, b: 0, a: 0}
     - _Distortion_X_Y: {r: 0, g: 0, b: 0, a: 0}
     - _Emission_Color: {r: 0, g: 0, b: 0, a: 0}
     - _Offset: {r: 0, g: 0, b: 0, a: 0}
     - _Offset_Tex_2: {r: 1, g: 1, b: 0, a: 0}
-    - _Texture_1_Color: {r: 0, g: 1.4151495, b: 23.968628, a: 0}
+    - _Texture_1_Color: {r: 0, g: 6.715198, b: 23.968628, a: 0}
     - _Texture_2D_Color: {r: 0, g: 11.984314, b: 8.282353, a: 0}
     - _Texture_2_Color: {r: 11.984314, g: 4.1273217, b: 0, a: 0}
     - _Tile_X_Y: {r: 15.14, g: 33.7, b: 0, a: 0}
     - _Tiling: {r: 12, g: 12, b: 0, a: 0}
     - _Tiling_Tex_2: {r: 0, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
+  m_AllowLocking: 1
 --- !u!114 &5565035484657618864
 MonoBehaviour:
   m_ObjectHideFlags: 11

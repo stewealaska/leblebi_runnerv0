@@ -1,27 +1,32 @@
 ﻿using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
-using System.Collections;
+using System.Collections.Generic;
 
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
     public static bool Restarted = false;
-    public bool IsShieldActive
-    {
-        get { return shieldActive; }
-    }
 
+    public bool IsShieldActive { get { return shieldActive; } }
 
     [Header("UI")]
     public TMP_Text scoreText;
     public TMP_Text multiplierText;
-    public TMP_Text livesText;
+    public TMP_Text livesText; // Artık kullanılmayacak (istersen boş bırak / UI'da kapat)
     public TMP_Text magnetTimerText;
     public TMP_Text shieldTimerText;
 
     public GameObject startPanel;
     public GameObject gameOverPanel;
+
+    [Header("High Score UI")]
+    public TMP_Text highScoreText; // Sağda göstereceğin TMP_Text
+
+    [Header("Lives Icons (Mario Style)")]
+    public Transform livesContainer;       // Canvas altındaki LivesContainer
+    public GameObject lifeIconPrefab;      // Robot ikon prefabı (UI Image)
+    private readonly List<GameObject> lifeIcons = new List<GameObject>();
 
     [Header("Speed & Multiplier")]
     public float startSpeed = 8f;
@@ -41,8 +46,6 @@ public class GameManager : MonoBehaviour
     public float hitSpeedPenalty = 4f;
 
     [Header("Shield")]
-    public float shieldCollisionOffTime = 0.25f;
-
     [Tooltip("Shield engel çarpışmasını yedikten sonra aynı frame'de ikinci hit gelmesini önlemek için kısa koruma.")]
     public float shieldConsumeInvuln = 0.45f;
 
@@ -60,9 +63,27 @@ public class GameManager : MonoBehaviour
     private int playerLayer = -1;
     private int obstacleLayer = -1;
 
-    // Shield state
     private bool shieldActive = false;
     private float shieldEndTime = 0f;
+
+    // ===============================
+    //   SWIPE UP DETECTION
+    // ===============================
+    [Header("Swipe Settings")]
+    [Tooltip("Yukarı kaydırmanın sayılabilmesi için gereken minimum dikey mesafe (piksel).")]
+    public float swipeUpMinDistance = 80f;
+
+    [Tooltip("Yukarı kaydırmada izin verilen maksimum yatay sapma (piksel).")]
+    public float swipeMaxHorizontalDrift = 160f;
+
+    private Vector2 touchStartPos;
+    private bool isSwiping = false;
+
+    // ===============================
+    //   HIGH SCORE (PlayerPrefs)
+    // ===============================
+    private const string HIGH_SCORE_KEY = "HIGH_SCORE";
+    private int highScore = 0;
 
     private void Awake()
     {
@@ -71,7 +92,6 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        // --- HARD RESET ---
         score = 0;
         isGameOver = false;
 
@@ -91,14 +111,18 @@ public class GameManager : MonoBehaviour
         RunnerPlayer rp = FindFirstObjectByType<RunnerPlayer>();
         if (rp != null)
         {
-            rp.SetCollisionEnabled(true);
             rp.StopInvulnerabilityBlink();
         }
 
         Lives = Mathf.Clamp(startLives, 0, maxLives);
         CurrentSpeed = startSpeed;
 
+        // High score load
+        highScore = PlayerPrefs.GetInt(HIGH_SCORE_KEY, 0);
+
+        BuildLivesIconPool();
         UpdateUI();
+        UpdateHighScoreUI();
         SetMagnetTimer(0f);
         SetShieldTimer(0f);
 
@@ -124,16 +148,24 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
-        if (!GameStarted && Input.GetKeyDown(KeyCode.Space))
+        if (!GameStarted)
         {
-            StartGame();
-            return;
+            bool startPressed = Input.GetKeyDown(KeyCode.Space) || IsSwipeUp();
+            if (startPressed)
+            {
+                StartGame();
+                return;
+            }
         }
 
-        if (isGameOver && Input.GetKeyDown(KeyCode.Space))
+        if (isGameOver)
         {
-            RestartGame();
-            return;
+            bool restartPressed = Input.GetKeyDown(KeyCode.Space) || IsSwipeUp();
+            if (restartPressed)
+            {
+                RestartGame();
+                return;
+            }
         }
 
         if (!GameStarted || isGameOver) return;
@@ -141,7 +173,6 @@ public class GameManager : MonoBehaviour
         UpdateSpeedAndMultiplier();
         UpdateMultiplierUI();
 
-        // Shield timer UI
         if (shieldActive)
         {
             float remaining = shieldEndTime - Time.time;
@@ -156,7 +187,6 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        // i-frame bittiğinde çarpışmaları geri aç + blink kapat
         if (invulnerable && Time.time >= invulnEndTime)
         {
             invulnerable = false;
@@ -167,10 +197,52 @@ public class GameManager : MonoBehaviour
             RunnerPlayer rp = FindFirstObjectByType<RunnerPlayer>();
             if (rp != null)
             {
-                rp.SetCollisionEnabled(true);
                 rp.StopInvulnerabilityBlink();
             }
         }
+    }
+
+    private bool IsSwipeUp()
+    {
+        // Mobil dokunmatik
+        if (Input.touchCount > 0)
+        {
+            Touch touch = Input.GetTouch(0);
+
+            if (touch.phase == TouchPhase.Began)
+            {
+                isSwiping = true;
+                touchStartPos = touch.position;
+            }
+            else if (touch.phase == TouchPhase.Ended && isSwiping)
+            {
+                isSwiping = false;
+                Vector2 delta = touch.position - touchStartPos;
+
+                if (delta.y >= swipeUpMinDistance && Mathf.Abs(delta.x) <= swipeMaxHorizontalDrift)
+                    return true;
+            }
+
+            return false;
+        }
+
+        // PC testi için mouse ile "yukarı sürükle"
+        if (Input.GetMouseButtonDown(0))
+        {
+            isSwiping = true;
+            touchStartPos = Input.mousePosition;
+        }
+        else if (Input.GetMouseButtonUp(0) && isSwiping)
+        {
+            isSwiping = false;
+            Vector2 endPos = Input.mousePosition;
+            Vector2 delta = endPos - touchStartPos;
+
+            if (delta.y >= swipeUpMinDistance && Mathf.Abs(delta.x) <= swipeMaxHorizontalDrift)
+                return true;
+        }
+
+        return false;
     }
 
     private void StartGame()
@@ -207,6 +279,16 @@ public class GameManager : MonoBehaviour
         int add = Mathf.RoundToInt(baseValue * mult);
 
         score += add;
+
+        // High score check (score değiştiği an)
+        if (score > highScore)
+        {
+            highScore = score;
+            PlayerPrefs.SetInt(HIGH_SCORE_KEY, highScore);
+            PlayerPrefs.Save();
+            UpdateHighScoreUI();
+        }
+
         UpdateUI();
     }
 
@@ -219,7 +301,6 @@ public class GameManager : MonoBehaviour
         UpdateLivesUI();
     }
 
-    // ===== SHIELD API =====
     public void ActivateShield(float duration)
     {
         if (isGameOver) return;
@@ -229,70 +310,53 @@ public class GameManager : MonoBehaviour
         SetShieldTimer(duration);
     }
 
-    // ObstacleHitDetector buradan geçecek:
-    // Shield varsa: can gitmez, engel yok olur, shield biter, kısa koruma başlar.
     public bool TryHandleObstacleHit(int damageAmount, GameObject obstacleRoot)
     {
         if (isGameOver) return false;
         if (!GameStarted) return false;
 
-        // Eğer zaten i-frame içindeysek hiçbir şey yapma
         if (invulnerable) return false;
 
-        // Önce shield kontrolü
         if (shieldActive)
         {
             float remaining = shieldEndTime - Time.time;
             if (remaining > 0f)
             {
-                // Shield tüket
                 shieldActive = false;
                 SetShieldTimer(0f);
 
-                // Engeli yok et
                 if (obstacleRoot != null)
                     Destroy(obstacleRoot);
 
-                // Aynı frame'de ikinci collider hit gelirse can gitmesin diye kısa invuln + cooldown
                 invulnerable = true;
                 invulnEndTime = Time.time + shieldConsumeInvuln;
                 nextDamageTime = Time.time + shieldConsumeInvuln;
 
-                // Takılma olmasın diye kısa süre collision kapat + nudge
+                if (playerLayer != -1 && obstacleLayer != -1)
+                    Physics.IgnoreLayerCollision(playerLayer, obstacleLayer, true);
+
                 RunnerPlayer rp = FindFirstObjectByType<RunnerPlayer>();
                 if (rp != null)
                 {
-                    rp.SetCollisionEnabled(false);
                     rp.NudgeForward(2.5f, 0.2f);
                     rp.StartInvulnerabilityBlink(shieldConsumeInvuln);
-                    StartCoroutine(ReenableCollisionAfter(rp, shieldCollisionOffTime));
                 }
 
                 return true;
             }
 
-            // Süre bitmişse kapat
             shieldActive = false;
             SetShieldTimer(0f);
         }
 
-        // Shield yoksa normal hasar
         bool tookDamage = TryTakeDamage(damageAmount);
 
-        // FIX: Hasar gerçekten işlendi ise engeli yok et
         if (tookDamage && obstacleRoot != null)
             Destroy(obstacleRoot);
 
         return tookDamage;
     }
 
-    private IEnumerator ReenableCollisionAfter(RunnerPlayer rp, float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        if (rp != null) rp.SetCollisionEnabled(true);
-    }
-
-    // ===== DAMAGE =====
     public bool TryTakeDamage(int amount)
     {
         if (isGameOver) return false;
@@ -318,7 +382,6 @@ public class GameManager : MonoBehaviour
         RunnerPlayer rp = FindFirstObjectByType<RunnerPlayer>();
         if (rp != null)
         {
-            rp.SetCollisionEnabled(false);
             rp.NudgeForward(2.0f, 0.2f);
             rp.StartInvulnerabilityBlink(invulnDuration);
         }
@@ -342,6 +405,15 @@ public class GameManager : MonoBehaviour
         SetMagnetTimer(0f);
         SetShieldTimer(0f);
 
+        // Güvenlik: game over anında da kaydet
+        if (score > highScore)
+        {
+            highScore = score;
+            PlayerPrefs.SetInt(HIGH_SCORE_KEY, highScore);
+            PlayerPrefs.Save();
+            UpdateHighScoreUI();
+        }
+
         RunnerPlayer rp = FindFirstObjectByType<RunnerPlayer>();
         if (rp != null) rp.StopInvulnerabilityBlink();
     }
@@ -357,7 +429,6 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
-    // ===== TIMER UI =====
     public void SetMagnetTimer(float remaining)
     {
         if (magnetTimerText == null) return;
@@ -384,7 +455,6 @@ public class GameManager : MonoBehaviour
         shieldTimerText.text = remaining.ToString("0.0") + "s";
     }
 
-    // ===== UI Helpers =====
     private void UpdateUI()
     {
         if (scoreText != null)
@@ -400,9 +470,61 @@ public class GameManager : MonoBehaviour
             multiplierText.text = "x" + GetMultiplier().ToString("0.0");
     }
 
+    // ==========================
+    //  LIVES ICONS (MARIO STYLE)
+    // ==========================
+
+    private void BuildLivesIconPool()
+    {
+        if (livesContainer == null || lifeIconPrefab == null)
+            return;
+
+        for (int i = 0; i < lifeIcons.Count; i++)
+        {
+            if (lifeIcons[i] != null)
+                Destroy(lifeIcons[i]);
+        }
+        lifeIcons.Clear();
+
+        for (int i = 0; i < maxLives; i++)
+        {
+            GameObject icon = Instantiate(lifeIconPrefab, livesContainer);
+            icon.SetActive(false);
+            lifeIcons.Add(icon);
+        }
+
+        RefreshLivesIcons();
+    }
+
     private void UpdateLivesUI()
     {
-        if (livesText != null)
-            livesText.text = Lives.ToString() + "/" + maxLives.ToString();
+        RefreshLivesIcons();
+    }
+
+    private void RefreshLivesIcons()
+    {
+        if (livesContainer == null || lifeIconPrefab == null) return;
+
+        if (lifeIcons.Count != maxLives)
+        {
+            BuildLivesIconPool();
+            return;
+        }
+
+        for (int i = 0; i < lifeIcons.Count; i++)
+        {
+            if (lifeIcons[i] == null) continue;
+            lifeIcons[i].SetActive(i < Lives);
+        }
+    }
+
+    // ==========================
+    //  HIGH SCORE UI
+    // ==========================
+
+    private void UpdateHighScoreUI()
+    {
+        if (highScoreText != null)
+            highScoreText.text = "HS " + highScore.ToString();
     }
 }

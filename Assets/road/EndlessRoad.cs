@@ -30,19 +30,10 @@ public class EndlessRoad : MonoBehaviour
     {
         if (tilePrefab == null) return;
 
+        // Ýlk kurulum
         if (tiles.Count == 0)
         {
-            for (int i = 0; i < tilesOnScreen; i++)
-            {
-                GameObject t = Instantiate(tilePrefab, transform);
-                t.transform.localPosition = new Vector3(0f, 0f, nextSpawnZ);
-                t.transform.localRotation = Quaternion.identity;
-                tiles.Enqueue(t);
-                nextSpawnZ += tileLength;
-
-                RoadEndTrigger trig = t.GetComponentInChildren<RoadEndTrigger>(true);
-                if (trig != null) trig.ResetTrigger();
-            }
+            BuildInitialTiles(0f);
         }
     }
 
@@ -85,5 +76,55 @@ public class EndlessRoad : MonoBehaviour
 
         RoadEndTrigger trig = tile.GetComponentInChildren<RoadEndTrigger>(true);
         if (trig != null) trig.ResetTrigger();
+    }
+
+    // =========================
+    // RESTART ÝÇÝN RESET
+    // =========================
+    public void ResetRoadToStart(float startLocalZ = 0f)
+    {
+        if (tiles.Count == 0)
+        {
+            // Hiç tile yoksa yeniden kur
+            BuildInitialTiles(startLocalZ);
+            return;
+        }
+
+        nextSpawnZ = startLocalZ;
+
+        // Kuyruðu sýrayla alýp yeniden diziyoruz
+        int count = tiles.Count;
+        for (int i = 0; i < count; i++)
+        {
+            GameObject t = tiles.Dequeue();
+            if (t == null) continue;
+
+            t.transform.localPosition = new Vector3(0f, 0f, nextSpawnZ);
+            t.transform.localRotation = Quaternion.identity;
+            nextSpawnZ += tileLength;
+
+            RoadEndTrigger trig = t.GetComponentInChildren<RoadEndTrigger>(true);
+            if (trig != null) trig.ResetTrigger();
+
+            tiles.Enqueue(t);
+        }
+    }
+
+    private void BuildInitialTiles(float startLocalZ)
+    {
+        nextSpawnZ = startLocalZ;
+
+        for (int i = 0; i < tilesOnScreen; i++)
+        {
+            GameObject t = Instantiate(tilePrefab, transform);
+            t.transform.localPosition = new Vector3(0f, 0f, nextSpawnZ);
+            t.transform.localRotation = Quaternion.identity;
+
+            RoadEndTrigger trig = t.GetComponentInChildren<RoadEndTrigger>(true);
+            if (trig != null) trig.ResetTrigger();
+
+            tiles.Enqueue(t);
+            nextSpawnZ += tileLength;
+        }
     }
 }

@@ -4,9 +4,12 @@ public class HeartCollectible : MonoBehaviour
 {
     public int lifeAmount = 1;
 
-    public void OnTriggerEnter(Collider other)
+    private bool collected = false;
+
+    public void Collect()
     {
-        if (!other.CompareTag("Player")) return;
+        if (collected) return;
+        collected = true;
 
         if (GameManager.Instance != null)
             GameManager.Instance.AddLife(lifeAmount);
@@ -17,5 +20,11 @@ public class HeartCollectible : MonoBehaviour
 
         if (fx != null) fx.PlayAndDestroy();
         else Destroy(gameObject);
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (!other.CompareTag("Player")) return;
+        Collect();
     }
 }
